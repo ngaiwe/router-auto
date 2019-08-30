@@ -117,7 +117,7 @@ class CreateRouter {
     let route = {
       name: `${value.name}`,
       path: `/${value.path}/index`,
-      componentPath: `${this.page}/${value.path}/Index.vue`
+      componentPath: `@/page/${value.path}/Index.vue`
     }
     return route
   }

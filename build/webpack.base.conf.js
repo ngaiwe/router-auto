@@ -4,6 +4,7 @@ const config = require('../config')
 const HappyPack = require('happypack')
 const vueLoaderConfig = require('./vue-loader.conf')
 const VueLoaderPlugin = require('vue-loader/lib/plugin')
+const CreateRouter = require('../plugin/CreateRouter')
 const happyThreadPool = HappyPack.ThreadPool({
   size: os.cpus().length
 })
@@ -74,6 +75,7 @@ module.exports = {
       loaders: ['babel-loader'],
       threadPool: happyThreadPool,
       verbose: true
-    })
+    }),
+    new CreateRouter()
   ]
 }
