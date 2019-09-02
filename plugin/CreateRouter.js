@@ -63,7 +63,7 @@ class CreateRouter {
     let values = this.getRouteNames(this.getFiles())
     let routes = values.map(value => this.addRoutes(value))
     let router = recursiveRoutes(this.options, routes)
-    fs.writeFileSync(`${this.root}/src/router.js`, router) // 需要写入内存
+    fs.writeFileSync(`${this.root}/src/.router.js`, router) // 需要写入内存
   }
   // 获取main.js文件内容
   getMain() {
@@ -76,10 +76,10 @@ class CreateRouter {
     let content = this.getMain().toString(),
       mains = content.split('from'),
       index = mains.findIndex(main => main.indexOf('router') === -1 ? false : true)
-    if (content.indexOf('@/router.js') == -1) {
+    if (content.indexOf('@/.router.js') == -1) {
       if (index == -1) {
         // 不存在
-        mains[0] = `import router from '@/router.js'\n${mains[0]}`
+        mains[0] = `import router from '@/.router.js'\n${mains[0]}`
         let key = mains.findIndex(main => main.indexOf('render') === -1 ? false : true)
         let els = mains[key].split('\n')
         let elKey = els.findIndex(main => main.indexOf('el') == -1 ? false : true)
@@ -88,7 +88,7 @@ class CreateRouter {
       } else {
         let router = mains[index + 1].split('\n')
         router.shift()
-        router.unshift(` '@/router.js'`)
+        router.unshift(` '@/.router.js'`)
         router = router.join('\n')
         mains.splice(index + 1, 1, router)
       }
@@ -98,8 +98,8 @@ class CreateRouter {
     }
   }
   // 查找匹配路由文件
-  getFiles() {
-    return glob.sync(`${this.page}/**/Index.vue`)
+  getFiles(type = 'Index.vue') {
+    return glob.sync(`${this.page}/**/${type}`)
   }
   // 匹配路由参数
   getRouteNames(value) {

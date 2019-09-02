@@ -2,4 +2,10 @@
   <div>
     123
   </div>
-</templ123ate>
+</template>
+
+<script>
+export default {
+  name: 'helloworld'
+}
+</script>
