@@ -3,13 +3,13 @@
  * 问题 
  * 1.监听文件夹变动从而再次编译 ✅
  * 2.将router.js写入缓存 问题遗留
- *  - 在hooks对的emit中操作compilation.assets
- *  - assets中source为create创建文件 size为length
- *  - 将文件router.js加入assets中
+ *  - 在hooks对的emit中操作compilation.assets ✅
+ *  - assets中source为create创建文件 size为length ✅
+ *  - 将文件router.js加入assets中 ✅
  *  - 如何将router.js匹配到app.js中？❓
  * 3.增加子目录Index路由 ✅
  * 4.修改main.js引入关系 ✅
- * 5.增加router配置和修改锁死前缀fx
+ * 5.增加router配置和修改锁死前缀fx ✅
  * 6.增加路由配置项
  * 7.测试build
  */
@@ -20,7 +20,8 @@ const chokidar = require('chokidar');
 const recursiveRoutes = require("./RecursiveRoutes.js")
 
 class CreateRouter {
-  constructor() {
+  constructor(options = {}) {
+    this.options = options
     this.root = process.cwd()
     this.page = `${this.root}/src/page`
     this.compiler = null
@@ -61,7 +62,7 @@ class CreateRouter {
   create() {
     let values = this.getRouteNames(this.getFiles())
     let routes = values.map(value => this.addRoutes(value))
-    let router = recursiveRoutes(routes)
+    let router = recursiveRoutes(this.options, routes)
     fs.writeFileSync(`${this.root}/src/router.js`, router) // 需要写入内存
   }
   // 获取main.js文件内容

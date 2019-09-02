@@ -1,6 +1,10 @@
-function recursiveRoutes (routes, tab, times) {
-  let tabFirst = tab.repeat(times)
-  let tabChildren = tab.repeat(times+1)
+function recursiveRoutes(options, routes, tab, times) {
+  let tabFirst = tab.repeat(times),
+    tabChildren = tab.repeat(times + 1),
+    {
+      base,
+      mode
+    } = options
   let paths = routes.map(route => {
     return `\nimport ${route.name} from '${route.componentPath}'`
   })
@@ -13,10 +17,16 @@ function recursiveRoutes (routes, tab, times) {
   ${paths.join('\n')}
   \nVue.use(Router)
   \nexport default new Router({
-    mode:'history',
-    base:'/fx/',
+    mode:'${dealValue(mode, 'history')}',
+    base:'/${dealValue(base, 'weiran')}/',
     routes:[${routes.join(',')}]\n})
   `
 }
 
-module.exports = (routes, tab = '  ', times = 2) => recursiveRoutes(routes, tab, times)
+// 处理值不存在
+function dealValue(value, defaultValue) {
+  return value ? value : defaultValue
+}
+
+
+module.exports = (options, routes, tab = '  ', times = 2) => recursiveRoutes(options, routes, tab, times)
