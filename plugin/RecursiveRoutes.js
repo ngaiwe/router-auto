@@ -9,7 +9,8 @@ function recursiveRoutes(options, routes, tab, times) {
     return `\nimport ${route.name} from '${route.componentPath}'`
   })
   routes = routes.map(route => {
-    return `{\n${tabChildren}path: '${route.path}',\n${tabChildren}name: '${route.name}',\n${tabChildren}component: ${route.name}\n${tabFirst}}`
+    let meta = route.meta?`,\n${tabChildren}${route.meta}`:''
+    return `{\n${tabChildren}path: '${route.path}',\n${tabChildren}name: '${route.name}',\n${tabChildren}component: ${route.name}${meta}\n${tabFirst}}`
   })
   return `
   \nimport Vue from 'vue'

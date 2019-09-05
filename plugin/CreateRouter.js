@@ -30,7 +30,6 @@ class CreateRouter {
   }
   // plugin入口
   apply(compiler) {
-    console.log('开始进入apply')
     this.compiler = compiler
     this.init()
     this.changeMain()
@@ -43,78 +42,85 @@ class CreateRouter {
       persistent: true // 是否在监听的时候继续进程
     });
     this.watcher
-      .on('add', path => {
-        console.log('新增文件', path)
-        this._add(path)
-      })
-      .on('unlink', path => {
-        console.log('删除文件', path)
-        this._delete(path)
+      .on('add', path => this._add(path))
+      .on('unlink', path => this._delete(path))
+      .on('change', path => {
+        if (this.isTrue(path, 'router.js')) {
+          this._changeRouter(path)
+        } else {
+          void null
+        }
       })
   }
-  // 查看当前符合的标准文件
-  isTrue(_path, value) {
-    return _path.indexOf(value) === -1 ? false : true
-  }
-  // 创建router.js
-  // create2() {
-  //   // let fs = this.compiler.outputFileSystem
-  //   let values = this.getRoutePathNames(this.getFiles())
-  //   let routes = values.map(value => this.addRoutes(value))
-  //   let router = recursiveRoutes(routes)
-  //   return router
-  // }
   // 初始化
   init() {
     let indexPathNames = this.getRoutePathNames(this.getFiles('Index.vue'))
-    this.pathNames = indexPathNames
-    let routes = indexPathNames.map(indexPathName => this.addRoutes(indexPathName))
-    let router = recursiveRoutes(this.options, routes) // 生成模板
-    fs.writeFileSync(`${this.root}/src/.router.js`, router) // 需要写入内存
+    // 遍历router mate
+    let metas = this.getRouteMetas(this.getFiles('router.js'))
+    this.pathNames = this.dealMetasToIndexPathNames(indexPathNames, metas)
+    this.writeRouter(this.pathNames)
   }
   // 增加文件
   _add(_path) {
     if (this.isTrue(_path, 'Index.vue')) {
-      console.log('增加Index', _path)
       let currentPathName = this.getCurrentRoutePathName(_path)
+      try {
+        let routerPath = _path.split('/')
+        routerPath.pop()
+        routerPath.push('router.js')
+        routerPath = routerPath.join('/')
+        fs.accessSync(routerPath)
+        let meta = this.getRouteMetas(routerPath, false)
+        currentPathName = {
+          ...currentPathName,
+          meta: meta.meta
+        }
+      } catch (error) {
+        void null
+      }
       this.pathNames = [...this.pathNames, currentPathName]
-      let routes = this.pathNames.map(pathName => this.addRoutes(pathName))
-      let router = recursiveRoutes(this.options, routes) // 生成模板
-      fs.writeFileSync(`${this.root}/src/.router.js`, router) // 需要写入内存
+      this.writeRouter(this.pathNames)
     } else if (this.isTrue(_path, 'router.js')) {
-      console.log('增加Router', _path)
+      this.pathNames = this.dealMetaToIndexPathNames(this.pathNames, _path)
+      this.writeRouter(this.pathNames)
     } else {
-      console.log('增加无关文件')
+      void null
     }
   }
   // 删除文件
   _delete(_path) {
     if (this.isTrue(_path, 'Index.vue')) {
-      console.log('删除Index', _path)
       let currentPathName = this.getCurrentRoutePathName(_path)
       this.pathNames = this.pathNames.filter(pathName => pathName.name != currentPathName['name'])
-      console.log(currentPathName)
-      console.log(this.pathNames)
-      let routes = this.pathNames.map(indexPathName => this.addRoutes(indexPathName))
-      let router = recursiveRoutes(this.options, routes) // 生成模板
-      fs.writeFileSync(`${this.root}/src/.router.js`, router) // 需要写入内存
+      this.writeRouter(this.pathNames)
     } else if (this.isTrue(_path, 'router.js')) {
-      console.log('删除Router', _path)
+      let meta = this.getRouteMetas(_path, false)
+      this.pathNames = this.pathNames.map(pathName => {
+        if (pathName.name == meta.name) {
+          return {
+            name: pathName.name,
+            path: pathName.path
+          }
+        } else {
+          return pathName
+        }
+      })
+      this.writeRouter(this.pathNames)
     } else {
-      console.log('删除无关文件')
+      void null
     }
   }
-  create() {
-    let values = this.getRoutePathNames(this.getFiles('Index.vue'))
-    let routes = values.map(value => this.addRoutes(value))
-    let router = recursiveRoutes(this.options, routes)
-    fs.writeFileSync(`${this.root}/src/.router.js`, router) // 需要写入内存
+  // 每个文件中router改变
+  _changeRouter(_path) {
+    this.pathNames = this.dealMetaToIndexPathNames(this.pathNames, _path)
+    this.writeRouter(this.pathNames)
   }
-  // 获取main.js文件内容
-  getMain() {
-    let entrys = Object.entries(this.compiler.options.entry),
-      main = entrys[0][1].split('/')
-    return fs.readFileSync(`${this.root}/src/${main[main.length-1]}`)
+  // 
+  // 写入router.js文件
+  writeRouter(pathNames) {
+    let routes = pathNames.map(pathName => this.addRoutes(pathName))
+    let router = recursiveRoutes(this.options, routes) // 生成模板
+    fs.writeFileSync(`${this.root}/src/.router.js`, router) // 需要写入内存
   }
   // 向main中注册router
   changeMain() {
@@ -142,6 +148,22 @@ class CreateRouter {
       void null
     }
   }
+  // 添加路由
+  addRoutes(value) {
+    let route = {
+      name: `${value.name}`,
+      path: `/${value.path}/index`,
+      componentPath: `@/page/${value.path}/Index.vue`,
+      meta: value.meta || ""
+    }
+    return route
+  }
+  // 获取main.js文件内容
+  getMain() {
+    let entrys = Object.entries(this.compiler.options.entry),
+      main = entrys[0][1].split('/')
+    return fs.readFileSync(`${this.root}/src/${main[main.length-1]}`)
+  }
   // 查找匹配路由文件
   getFiles(type) {
     return glob.sync(`${this.page}/**/${type}`)
@@ -158,6 +180,14 @@ class CreateRouter {
       }
     })
   }
+  // 匹配路由meta额外参数
+  getRouteMetas(value, status = true) {
+    if (status) {
+      return value.map(item => this.dealRoute(item))
+    } else {
+      return this.dealRoute(value)
+    }
+  }
   // 匹配当前路由参数
   getCurrentRoutePathName(value) {
     let reg = new RegExp(`${this.page}/(.+)/.+`, 'i')
@@ -168,14 +198,58 @@ class CreateRouter {
       name: _name
     }
   }
-  // 添加路由
-  addRoutes(value) {
-    let route = {
-      name: `${value.name}`,
-      path: `/${value.path}/index`,
-      componentPath: `@/page/${value.path}/Index.vue`
+  // 查看当前符合的标准文件
+  isTrue(_path, value) {
+    return _path.indexOf(value) === -1 ? false : true
+  }
+  // 处理meta
+  dealRoute(value) {
+    let reg = new RegExp(`${this.page}/(.+)/.+`, 'i'),
+      _name = reg.exec(value)[1].split('/').join('_')
+    try {
+      fs.accessSync(value)
+      let _meta = fs.readFileSync(value).toString(),
+        first = _meta.indexOf('{'),
+        last = _meta.lastIndexOf('}')
+      _meta = _meta.slice(first + 1, last).split('\n').join('').split(' ').join('')
+      return {
+        name: _name,
+        meta: _meta
+      }
+    } catch (error) {
+      return {
+        name: _name,
+        meta: ''
+      }
     }
-    return route
+  }
+  // 处理metas合并Index路由
+  dealMetasToIndexPathNames(indexPathNames, metas) {
+    return indexPathNames.map(indexPathName => {
+      let meta = metas.find(meta => meta.name == indexPathName.name)
+      if (meta) {
+        return {
+          ...indexPathName,
+          meta: meta.meta
+        }
+      } else {
+        return indexPathName
+      }
+    })
+  }
+  // 处理单个meta合并到Index路由
+  dealMetaToIndexPathNames(indexPathNames, _path) {
+    let meta = this.getRouteMetas(_path, false)
+    return indexPathNames.map(pathName => {
+      if (pathName.name == meta.name) {
+        return {
+          ...pathName,
+          meta: meta.meta
+        }
+      } else {
+        return pathName
+      }
+    })
   }
 }
 
